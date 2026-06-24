@@ -25,6 +25,18 @@ const App = (() => {
         _bindSlider('padding', 'paddingVal', 'px');
         _bindSlider('borderWidth', 'borderWidthVal', 'px');
 
+        // Добавляем обработчики для мгновенной перегенерации при изменении ключевых параметров
+        ['fontSize', 'lineHeight', 'formulaPadding', 'padding'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                // Обновляем отображение значения
+                const displayId = id + 'Val';
+                const suffix = id === 'lineHeight' ? '' : 'px';
+                document.getElementById(displayId).textContent = document.getElementById(id).value + suffix;
+                // Запускаем генерацию
+                generate();
+            });
+        });
+
         // При смене диаметра — синхронизируем canvas редактора пути
         // (масштабируем уже нарисованные точки под новый размер).
         document.getElementById('circleSize').addEventListener('input', () => {
