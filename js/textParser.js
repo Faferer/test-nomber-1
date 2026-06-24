@@ -133,8 +133,8 @@ const TextParser = (() => {
         }
 
         // Минимальные запасы для дробей, интегралов и других высоких элементов
-        const padX = isDisplay ? 4 : 3;
-        const padY = isDisplay ? 4 : 2;
+        const padX = isDisplay ? 1 : 0;
+        const padY = isDisplay ? 1 : 0;
         w += padX * 2;
         h += padY * 2;
 

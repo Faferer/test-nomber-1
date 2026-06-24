@@ -18,7 +18,7 @@ const CircleRenderer = (() => {
 
         const {
             size = DEFAULT_SIZE,
-            fontSize = 16, lineHeight = 1.6, padding = 15,
+            fontSize = 16, lineHeight = 1.2, padding = 15,
             textColor = '#ffffff', bgColor = '#1a1a2e',
             borderColor = '#e94560', borderWidth = 3,
             excludePath = null, excludeColor = '#16213e'
@@ -74,6 +74,8 @@ const CircleRenderer = (() => {
             let placedAnything = false;
 
             while (ti < tokens.length && bl <= blEnd) {
+                // Проверяем доступную ширину на текущей базовой линии с учётом высоты токенов
+                // Используем fontAscent/fontDescent для начальной оценки, но потом проверим каждый токен отдельно
                 const topY = bl - fontAscent;
                 const botY = bl + fontDescent;
                 const halfTop = Math.sqrt(Math.max(0, effR * effR - (topY - CY) * (topY - CY)));
@@ -86,8 +88,6 @@ const CircleRenderer = (() => {
                 if (segs.length === 0) { bl += 1; continue; }
 
                 let linePlaced = false;
-                let lineAscent = fontAscent;
-                let lineDescent = fontDescent;
                 let forceBreak = false;
 
                 for (const seg of segs) {
@@ -108,8 +108,8 @@ const CircleRenderer = (() => {
                         const tBot = bl + (tok.height - tok.baselineOffset);
 
                         // Проверяем, что токен помещается по вертикали внутри круга
-                        // С небольшим запасом для предотвращения обрезания
-                        const verticalMargin = 2;
+                        // С минимальным запасом для предотвращения обрезания
+                        const verticalMargin = 0;
                         if (tTop < CY - effR + verticalMargin || tBot > CY + effR - verticalMargin) {
                             // Вертикально не влезает на эту базовую линию
                             forceBreak = 'vfit';
@@ -127,10 +127,6 @@ const CircleRenderer = (() => {
                             ti++;
                             placedAnything = true;
                             linePlaced = true;
-
-                            // Обновляем ascent/descent строки с учётом высоты токена
-                            lineAscent = Math.max(lineAscent, tok.baselineOffset);
-                            lineDescent = Math.max(lineDescent, tok.height - tok.baselineOffset);
                         } else {
                             break;
                         }
@@ -142,18 +138,12 @@ const CircleRenderer = (() => {
                     continue;
                 }
 
-                // следующий baseline: не даём следующей строке залезть сверху
-                let nextAscent = fontAscent;
-                if (ti < tokens.length) nextAscent = tokens[ti].baselineOffset || fontAscent;
-
-                // Используем реальный ascent/descent текущей строки для расчёта интервала
-                const lineBottom = bl + lineDescent;
+                // Интервал между строками: lineHeight задаёт общий множитель высоты строки
+                // Следующая базовая линия = текущий baseline + (lineHeight * fontSize)
+                const stepY = Math.round(fontSize * lineHeight);
                 
-                // Интервал между строками на основе lineHeight (как в CSS)
-                const lineGap = Math.round(fontSize * (lineHeight - 1));
-                
-                // Следующая базовая линия = текущая низ + интервал + ascent следующей строки
-                bl = lineBottom + lineGap + nextAscent;
+                // Следующая базовая линия
+                bl = bl + stepY;
             }
 
             if (!placedAnything) break;
