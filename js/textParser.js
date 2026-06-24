@@ -36,7 +36,7 @@ const TextParser = (() => {
     }
 
     async function measure(tokens, opts) {
-        const { fontSize, fontFamily, fontWeight, textColor, formulaPadding = 2 } = opts;
+        const { fontSize, fontFamily, fontWeight, textColor, formulaVSpacing } = opts;
         const fontStr = `${fontWeight || 'normal'} ${fontSize}px ${fontFamily || 'serif'}`;
 
         const ctx = document.createElement('canvas').getContext('2d');
@@ -58,7 +58,7 @@ const TextParser = (() => {
                 const isDisplay = token.type === 'LATEX_DISPLAY';
                 const texSize = isDisplay ? Math.round(fontSize * 1.15) : fontSize;
 
-                const result = await _renderFormula(token.content, texSize, isDisplay, textColor, formulaPadding);
+                const result = await _renderFormula(token.content, texSize, isDisplay, textColor, formulaVSpacing);
                 measured.push(result);
             }
         }
@@ -66,7 +66,7 @@ const TextParser = (() => {
         return measured;
     }
 
-    async function _renderFormula(latex, texSize, isDisplay, textColor, formulaPadding = 2) {
+    async function _renderFormula(latex, texSize, isDisplay, textColor, formulaVSpacing = 0) {
         // Создаём контейнер для измерения формулы
         const wrapper = document.createElement('div');
         wrapper.style.cssText = `
@@ -132,11 +132,11 @@ const TextParser = (() => {
             return _fallback(latex, texSize, isDisplay);
         }
 
-        // Вертикальный отступ для формул - критически важен для дробей, интегралов и других высоких элементов
-        // formulaPadding позволяет пользователю регулировать отступы через интерфейс
-        // Усиливаем влияние formulaPadding на вертикальные отступы чтобы можно было убрать любые наложения
-        const padX = isDisplay ? 2 + formulaPadding * 2 : 1 + formulaPadding;
-        const padY = isDisplay ? 4 + formulaPadding * 6 : 2 + formulaPadding * 4;  // Ещё больше усиливаем влияние
+        // Добавляем запас со всех сторон для дробей и высоких элементов
+        const padX = isDisplay ? 6 : 4;
+        const basePadY = isDisplay ? 8 : 4;
+        const formulaVSpacing = opts.formulaVSpacing || 0;
+        const padY = basePadY + formulaVSpacing;
         w += padX * 2;
         h += padY * 2;
 
@@ -156,22 +156,16 @@ const TextParser = (() => {
 
         document.body.removeChild(wrapper);
 
-        // Точное вычисление baselineOffset
+        // Вычисляем baselineOffset точно
         // baselineRef - позиция базовой линии эталонного символа 'x'
         const baselineRef = refRect.bottom;
         // Позиция верха математического контейнера
         const mathTop = mathRect.top;
-        // Смещение базовой линии от верха канваса (с учётом padding)
+        // Смещение базовой линии от верха канваса
         let baselineOffset = baselineRef - mathTop + padY;
 
-        // Для display-формул центрируем по вертикали относительно базовой линии текста
-        if (isDisplay) {
-            // Display-формулы должны быть отцентрованы, их baseline должен быть посередине высоты
-            baselineOffset = Math.round(h / 2);
-        } else {
-            // Для инлайн-формул baseline должен точно совпадать с baseline обычного текста
-            // Используем точное значение без ограничений
-        }
+        // Ограничиваем baselineOffset разумными пределами
+        baselineOffset = Math.max(padY + 2, Math.min(h - padY - 2, baselineOffset));
 
         canvas._drawW = w;
         canvas._drawH = h;
