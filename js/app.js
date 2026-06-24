@@ -108,8 +108,10 @@ const App = (() => {
         btn.disabled = true;
         btn.textContent = '⏳ Генерация...';
 
-        // Даём UI время обновиться
-        await new Promise(r => setTimeout(r, 50));
+        // Даём UI время обновиться (используем requestAnimationFrame для CSP-совместимости)
+        await new Promise(r => requestAnimationFrame(() => {
+            requestAnimationFrame(r);
+        }));
 
         try {
             _canvases = await CircleRenderer.renderPages(text, settings);
