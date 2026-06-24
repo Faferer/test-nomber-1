@@ -132,9 +132,9 @@ const TextParser = (() => {
             return _fallback(latex, texSize, isDisplay);
         }
 
-        // Увеличенные запасы для дробей, интегралов и других высоких элементов
-        const padX = isDisplay ? 8 : 6;
-        const padY = isDisplay ? 12 : 8;
+        // Минимальные запасы для дробей, интегралов и других высоких элементов
+        const padX = isDisplay ? 4 : 3;
+        const padY = isDisplay ? 4 : 2;
         w += padX * 2;
         h += padY * 2;
 
@@ -165,14 +165,10 @@ const TextParser = (() => {
         // Для display-формул центрируем по вертикали относительно базовой линии текста
         if (isDisplay) {
             // Display-формулы должны быть отцентрованы, их baseline должен быть посередине высоты
-            const idealBaseline = Math.round(h / 2);
-            // Но сохраняем разумные пределы
-            baselineOffset = Math.max(padY + 4, Math.min(h - padY - 4, baselineOffset));
+            baselineOffset = Math.round(h / 2);
         } else {
-            // Для инлайн-формул baseline должен совпадать с baseline обычного текста
-            const fontAscent = Math.round(texSize * 0.78);
-            const fontDescent = Math.round(texSize * 0.22);
-            baselineOffset = Math.max(padY + 2, Math.min(h - padY - 2, baselineOffset));
+            // Для инлайн-формул baseline должен точно совпадать с baseline обычного текста
+            // Используем точное значение без ограничений
         }
 
         canvas._drawW = w;
