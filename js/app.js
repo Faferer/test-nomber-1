@@ -21,6 +21,7 @@ const App = (() => {
         _bindSlider('circleSize', 'circleSizeVal', 'px');
         _bindSlider('fontSize', 'fontSizeVal', 'px');
         _bindSlider('lineHeight', 'lineHeightVal', '');
+        _bindSlider('formulaPadding', 'formulaPaddingVal', 'px');
         _bindSlider('padding', 'paddingVal', 'px');
         _bindSlider('borderWidth', 'borderWidthVal', 'px');
 
@@ -65,6 +66,7 @@ const App = (() => {
             size: parseInt(document.getElementById('circleSize').value, 10),
             fontSize: parseInt(document.getElementById('fontSize').value, 10),
             lineHeight: parseFloat(document.getElementById('lineHeight').value),
+            formulaPadding: parseInt(document.getElementById('formulaPadding').value, 10),
             padding: parseInt(document.getElementById('padding').value, 10),
             textColor: document.getElementById('textColor').value,
             bgColor: document.getElementById('bgColor').value,

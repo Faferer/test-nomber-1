@@ -36,7 +36,7 @@ const TextParser = (() => {
     }
 
     async function measure(tokens, opts) {
-        const { fontSize, fontFamily, fontWeight, textColor } = opts;
+        const { fontSize, fontFamily, fontWeight, textColor, formulaPadding = 2 } = opts;
         const fontStr = `${fontWeight || 'normal'} ${fontSize}px ${fontFamily || 'serif'}`;
 
         const ctx = document.createElement('canvas').getContext('2d');
@@ -58,7 +58,7 @@ const TextParser = (() => {
                 const isDisplay = token.type === 'LATEX_DISPLAY';
                 const texSize = isDisplay ? Math.round(fontSize * 1.15) : fontSize;
 
-                const result = await _renderFormula(token.content, texSize, isDisplay, textColor);
+                const result = await _renderFormula(token.content, texSize, isDisplay, textColor, formulaPadding);
                 measured.push(result);
             }
         }
@@ -66,7 +66,7 @@ const TextParser = (() => {
         return measured;
     }
 
-    async function _renderFormula(latex, texSize, isDisplay, textColor) {
+    async function _renderFormula(latex, texSize, isDisplay, textColor, formulaPadding = 2) {
         // Создаём контейнер для измерения формулы
         const wrapper = document.createElement('div');
         wrapper.style.cssText = `
@@ -133,8 +133,10 @@ const TextParser = (() => {
         }
 
         // Минимальные запасы для дробей, интегралов и других высоких элементов
-        const padX = isDisplay ? 1 : 0;
-        const padY = isDisplay ? 1 : 0;
+        // padY должен быть достаточным чтобы формулы не обрезались, но не слишком большим
+        // formulaPadding позволяет пользователю регулировать отступы через интерфейс
+        const padX = isDisplay ? 2 + formulaPadding : 1 + Math.floor(formulaPadding / 2);
+        const padY = isDisplay ? 4 + formulaPadding : 2 + Math.floor(formulaPadding / 2);
         w += padX * 2;
         h += padY * 2;
 
