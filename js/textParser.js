@@ -109,7 +109,9 @@ const TextParser = (() => {
                 displayMode: isDisplay,
                 throwOnError: false,
                 strict: false,
-                trust: true
+                trust: true,
+                // Отключаем использование eval() для совместимости с CSP
+                globalGroup: false
             });
         } catch (e) {
             mathContainer.textContent = latex;

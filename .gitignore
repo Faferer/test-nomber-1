@@ -1,5 +1,1 @@
-(index.html is a source file, so no need to add it to .gitignore)
-
-Since only a source file (index.html) was modified and there are no build artifacts, dependencies, or temporary files in the changes, the .gitignore should remain empty.
-
-(empty)
+(js/textParser.js)
