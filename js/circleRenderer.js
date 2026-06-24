@@ -36,7 +36,8 @@ const CircleRenderer = (() => {
             fontSize,
             fontFamily: "Georgia, 'Times New Roman', serif",
             fontWeight: 'normal',
-            textColor: textColor
+            textColor: textColor,
+            formulaPadding: opts.formulaPadding || 2
         });
         const tokens = TextParser.prepareForLayout(measured);
         if (tokens.length === 0) return [];
