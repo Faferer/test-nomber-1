@@ -30,7 +30,6 @@ const CircleRenderer = (() => {
         const R  = SIZE / 2;
         const effR = Math.max(10, R - padding);
         const font = `normal ${fontSize}px Georgia, 'Times New Roman', serif`;
-        const desiredGap = Math.round(fontSize * (lineHeight - 1));
 
         const raw = TextParser.tokenize(text);
         const measured = await TextParser.measure(raw, {
@@ -147,7 +146,14 @@ const CircleRenderer = (() => {
                 let nextAscent = fontAscent;
                 if (ti < tokens.length) nextAscent = tokens[ti].baselineOffset || fontAscent;
 
-                bl = bl + lineDescent + desiredGap + Math.max(0, nextAscent - fontAscent);
+                // Используем реальный ascent/descent текущей строки для расчёта интервала
+                const lineBottom = bl + lineDescent;
+                
+                // Интервал между строками на основе lineHeight (как в CSS)
+                const lineGap = Math.round(fontSize * (lineHeight - 1));
+                
+                // Следующая базовая линия = текущая низ + интервал + ascent следующей строки
+                bl = lineBottom + lineGap + nextAscent;
             }
 
             if (!placedAnything) break;
