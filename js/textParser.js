@@ -132,11 +132,11 @@ const TextParser = (() => {
             return _fallback(latex, texSize, isDisplay);
         }
 
-        // Минимальные запасы для дробей, интегралов и других высоких элементов
-        // padY должен быть достаточным чтобы формулы не обрезались, но не слишком большим
+        // Вертикальный отступ для формул - критически важен для дробей, интегралов и других высоких элементов
         // formulaPadding позволяет пользователю регулировать отступы через интерфейс
-        const padX = isDisplay ? 2 + formulaPadding * 2 : 1 + formulaPadding;
-        const padY = isDisplay ? 4 + formulaPadding * 3 : 2 + formulaPadding * 2;
+        // Усиливаем влияние formulaPadding на вертикальные отступы чтобы можно было убрать любые наложения
+        const padX = isDisplay ? 2 + formulaPadding : 1 + formulaPadding;
+        const padY = isDisplay ? 4 + formulaPadding * 4 : 2 + formulaPadding * 3;
         w += padX * 2;
         h += padY * 2;
 
