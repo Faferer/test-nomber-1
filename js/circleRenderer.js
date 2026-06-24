@@ -64,8 +64,8 @@ const CircleRenderer = (() => {
         const fontDescent = refM.actualBoundingBoxDescent || Math.round(fontSize * 0.22);
 
         // Добавляем формульный отступ к межстрочному интервалу
-        // formulaPadding добавляется сверху и снизу, поэтому умножаем на 2
-        const formulaExtraSpace = formulaPadding * 2;
+        // formulaPadding добавляется сверху и снизу каждой формулы, поэтому умножаем на 2
+        const formulaExtraSpace = formulaPadding * 4;  // Усиливаем влияние для гарантированного отсутствия наложений
         
         const blStart = Math.ceil(CY - effR + fontAscent + formulaExtraSpace);
         const blEnd = Math.floor(CY + effR - fontDescent - formulaExtraSpace);
@@ -115,7 +115,7 @@ const CircleRenderer = (() => {
 
                         // Проверяем, что токен помещается по вертикали внутри круга
                         // С учётом formulaPadding для предотвращения обрезания
-                        const verticalMargin = formulaPadding;
+                        const verticalMargin = formulaPadding * 2;  // Усиливаем влияние formulaPadding
                         if (tTop < CY - effR + verticalMargin || tBot > CY + effR - verticalMargin) {
                             // Вертикально не влезает на эту базовую линию
                             forceBreak = 'vfit';
@@ -145,8 +145,8 @@ const CircleRenderer = (() => {
                 }
 
                 // Интервал между строками: lineHeight задаёт общий множитель высоты строки
-                // Следующая базовая линия = текущий baseline + (lineHeight * fontSize)
-                const stepY = Math.round(fontSize * lineHeight);
+                // formulaPadding добавляет дополнительное пространство для высоких формул
+                const stepY = Math.round(fontSize * lineHeight) + (formulaPadding * 2);  // Добавляем формульный отступ к шагу
                 
                 // Следующая базовая линия
                 bl = bl + stepY;

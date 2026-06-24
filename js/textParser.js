@@ -135,8 +135,8 @@ const TextParser = (() => {
         // Вертикальный отступ для формул - критически важен для дробей, интегралов и других высоких элементов
         // formulaPadding позволяет пользователю регулировать отступы через интерфейс
         // Усиливаем влияние formulaPadding на вертикальные отступы чтобы можно было убрать любые наложения
-        const padX = isDisplay ? 2 + formulaPadding : 1 + formulaPadding;
-        const padY = isDisplay ? 4 + formulaPadding * 4 : 2 + formulaPadding * 3;
+        const padX = isDisplay ? 2 + formulaPadding * 2 : 1 + formulaPadding;
+        const padY = isDisplay ? 4 + formulaPadding * 6 : 2 + formulaPadding * 4;  // Ещё больше усиливаем влияние
         w += padX * 2;
         h += padY * 2;
 
