@@ -21,21 +21,9 @@ const App = (() => {
         _bindSlider('circleSize', 'circleSizeVal', 'px');
         _bindSlider('fontSize', 'fontSizeVal', 'px');
         _bindSlider('lineHeight', 'lineHeightVal', '');
-        _bindSlider('formulaPadding', 'formulaPaddingVal', 'px');
         _bindSlider('padding', 'paddingVal', 'px');
+        _bindSlider('formulaVSpacing', 'formulaVSpacingVal', 'px');
         _bindSlider('borderWidth', 'borderWidthVal', 'px');
-
-        // Добавляем обработчики для мгновенной перегенерации при изменении ключевых параметров
-        ['fontSize', 'lineHeight', 'formulaPadding', 'padding'].forEach(id => {
-            document.getElementById(id).addEventListener('input', () => {
-                // Обновляем отображение значения
-                const displayId = id + 'Val';
-                const suffix = id === 'lineHeight' ? '' : 'px';
-                document.getElementById(displayId).textContent = document.getElementById(id).value + suffix;
-                // Запускаем генерацию
-                generate();
-            });
-        });
 
         // При смене диаметра — синхронизируем canvas редактора пути
         // (масштабируем уже нарисованные точки под новый размер).
@@ -78,8 +66,8 @@ const App = (() => {
             size: parseInt(document.getElementById('circleSize').value, 10),
             fontSize: parseInt(document.getElementById('fontSize').value, 10),
             lineHeight: parseFloat(document.getElementById('lineHeight').value),
-            formulaPadding: parseInt(document.getElementById('formulaPadding').value, 10),
             padding: parseInt(document.getElementById('padding').value, 10),
+            formulaVSpacing: parseInt(document.getElementById('formulaVSpacing').value, 10),
             textColor: document.getElementById('textColor').value,
             bgColor: document.getElementById('bgColor').value,
             borderColor: document.getElementById('borderColor').value,

@@ -18,11 +18,10 @@ const CircleRenderer = (() => {
 
         const {
             size = DEFAULT_SIZE,
-            fontSize = 16, lineHeight = 1.2, padding = 15,
+            fontSize = 16, lineHeight = 1.6, padding = 15,
             textColor = '#ffffff', bgColor = '#1a1a2e',
             borderColor = '#e94560', borderWidth = 3,
-            excludePath = null, excludeColor = '#16213e',
-            formulaPadding = 5
+            excludePath = null, excludeColor = '#16213e'
         } = opts;
 
         const SIZE = Math.max(64, Math.round(size));
@@ -31,14 +30,14 @@ const CircleRenderer = (() => {
         const R  = SIZE / 2;
         const effR = Math.max(10, R - padding);
         const font = `normal ${fontSize}px Georgia, 'Times New Roman', serif`;
+        const desiredGap = Math.round(fontSize * (lineHeight - 1));
 
         const raw = TextParser.tokenize(text);
         const measured = await TextParser.measure(raw, {
             fontSize,
             fontFamily: "Georgia, 'Times New Roman', serif",
             fontWeight: 'normal',
-            textColor: textColor,
-            formulaPadding: formulaPadding
+            textColor: textColor
         });
         const tokens = TextParser.prepareForLayout(measured);
         if (tokens.length === 0) return [];
@@ -63,12 +62,8 @@ const CircleRenderer = (() => {
         const fontAscent = refM.actualBoundingBoxAscent || Math.round(fontSize * 0.78);
         const fontDescent = refM.actualBoundingBoxDescent || Math.round(fontSize * 0.22);
 
-        // Добавляем формульный отступ к межстрочному интервалу
-        // formulaPadding добавляется сверху и снизу каждой формулы, поэтому умножаем на 2
-        const formulaExtraSpace = formulaPadding * 4;  // Усиливаем влияние для гарантированного отсутствия наложений
-        
-        const blStart = Math.ceil(CY - effR + fontAscent + formulaExtraSpace);
-        const blEnd = Math.floor(CY + effR - fontDescent - formulaExtraSpace);
+        const blStart = Math.ceil(CY - effR + fontAscent);
+        const blEnd = Math.floor(CY + effR - fontDescent);
 
         const pages = [];
         let ti = 0;
@@ -80,8 +75,6 @@ const CircleRenderer = (() => {
             let placedAnything = false;
 
             while (ti < tokens.length && bl <= blEnd) {
-                // Проверяем доступную ширину на текущей базовой линии с учётом высоты токенов
-                // Используем fontAscent/fontDescent для начальной оценки, но потом проверим каждый токен отдельно
                 const topY = bl - fontAscent;
                 const botY = bl + fontDescent;
                 const halfTop = Math.sqrt(Math.max(0, effR * effR - (topY - CY) * (topY - CY)));
@@ -94,6 +87,8 @@ const CircleRenderer = (() => {
                 if (segs.length === 0) { bl += 1; continue; }
 
                 let linePlaced = false;
+                let lineAscent = fontAscent;
+                let lineDescent = fontDescent;
                 let forceBreak = false;
 
                 for (const seg of segs) {
@@ -109,30 +104,28 @@ const CircleRenderer = (() => {
                             break;
                         }
 
-                        // Вычисляем верх и низ токена относительно baseline
                         const tTop = bl - tok.baselineOffset;
                         const tBot = bl + (tok.height - tok.baselineOffset);
 
-                        // Проверяем, что токен помещается по вертикали внутри круга
-                        // С учётом formulaPadding для предотвращения обрезания
-                        const verticalMargin = formulaPadding * 2;  // Усиливаем влияние formulaPadding
-                        if (tTop < CY - effR + verticalMargin || tBot > CY + effR - verticalMargin) {
-                            // Вертикально не влезает на эту базовую линию
+                        if (tTop < CY - effR - 0.5 || tBot > CY + effR + 0.5) {
+                            // вертикально не влезает на эту базовую линию
                             forceBreak = 'vfit';
                             break;
                         }
 
                         const sp = tok._spaceAfter ? spaceW : 0;
                         const isFirstOnLine = page.lines.length === 0 ||
-                            page.lines[page.lines.length - 1].baseline !== bl;
+ page.lines[page.lines.length - 1].baseline !== bl;
 
-                        // Проверяем, что токен помещается по горизонтали в сегмент
                         if (cx + tok.width + sp <= seg.right + 0.5 || isFirstOnLine) {
                             page.lines.push({ baseline: bl, x: cx, token: tok });
                             cx += tok.width + sp;
                             ti++;
                             placedAnything = true;
                             linePlaced = true;
+
+                            lineAscent = Math.max(lineAscent, tok.baselineOffset);
+                            lineDescent = Math.max(lineDescent, tok.height - tok.baselineOffset);
                         } else {
                             break;
                         }
@@ -144,12 +137,11 @@ const CircleRenderer = (() => {
                     continue;
                 }
 
-                // Интервал между строками: lineHeight задаёт общий множитель высоты строки
-                // formulaPadding добавляет дополнительное пространство для высоких формул
-                const stepY = Math.round(fontSize * lineHeight) + (formulaPadding * 2);  // Добавляем формульный отступ к шагу
-                
-                // Следующая базовая линия
-                bl = bl + stepY;
+                // следующий baseline: не даём следующей строке залезть сверху
+                let nextAscent = fontAscent;
+                if (ti < tokens.length) nextAscent = tokens[ti].baselineOffset || fontAscent;
+
+                bl = bl + lineDescent + desiredGap + Math.max(0, nextAscent - fontAscent);
             }
 
             if (!placedAnything) break;
@@ -220,15 +212,11 @@ const CircleRenderer = (() => {
         ctx.font = font;
         ctx.textBaseline = 'alphabetic';
 
-        // Сортируем линии по baseline для правильного порядка отрисовки
-        const sortedLines = [...page.lines].sort((a, b) => a.baseline - b.baseline);
-
-        for (const item of sortedLines) {
+        for (const item of page.lines) {
             const tok = item.token;
             if (tok.canvas) {
                 const drawW = tok.canvas._drawW || tok.width;
                 const drawH = tok.canvas._drawH || tok.height;
-                // Точная позиция Y: baseline минус offset базовой линии токена
                 const drawY = item.baseline - tok.baselineOffset;
                 ctx.drawImage(tok.canvas, item.x, drawY, drawW, drawH);
             } else {
