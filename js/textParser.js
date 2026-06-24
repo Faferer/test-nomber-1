@@ -132,9 +132,9 @@ const TextParser = (() => {
             return _fallback(latex, texSize, isDisplay);
         }
 
-        // Добавляем запас со всех сторон для дробей и высоких элементов
-        const padX = isDisplay ? 6 : 4;
-        const padY = isDisplay ? 8 : 4;
+        // Увеличенные запасы для дробей, интегралов и других высоких элементов
+        const padX = isDisplay ? 8 : 6;
+        const padY = isDisplay ? 12 : 8;
         w += padX * 2;
         h += padY * 2;
 
@@ -154,16 +154,26 @@ const TextParser = (() => {
 
         document.body.removeChild(wrapper);
 
-        // Вычисляем baselineOffset точно
+        // Точное вычисление baselineOffset
         // baselineRef - позиция базовой линии эталонного символа 'x'
         const baselineRef = refRect.bottom;
         // Позиция верха математического контейнера
         const mathTop = mathRect.top;
-        // Смещение базовой линии от верха канваса
+        // Смещение базовой линии от верха канваса (с учётом padding)
         let baselineOffset = baselineRef - mathTop + padY;
 
-        // Ограничиваем baselineOffset разумными пределами
-        baselineOffset = Math.max(padY + 2, Math.min(h - padY - 2, baselineOffset));
+        // Для display-формул центрируем по вертикали относительно базовой линии текста
+        if (isDisplay) {
+            // Display-формулы должны быть отцентрованы, их baseline должен быть посередине высоты
+            const idealBaseline = Math.round(h / 2);
+            // Но сохраняем разумные пределы
+            baselineOffset = Math.max(padY + 4, Math.min(h - padY - 4, baselineOffset));
+        } else {
+            // Для инлайн-формул baseline должен совпадать с baseline обычного текста
+            const fontAscent = Math.round(texSize * 0.78);
+            const fontDescent = Math.round(texSize * 0.22);
+            baselineOffset = Math.max(padY + 2, Math.min(h - padY - 2, baselineOffset));
+        }
 
         canvas._drawW = w;
         canvas._drawH = h;
