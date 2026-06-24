@@ -1,11 +1,14 @@
 /**
  * textParser.js — Парсер текста + LaTeX → Canvas рендеринг.
  *
- * v4:
+ * v5:
  *   - истинный baseline инлайн-формулы замеряется по эталонной букве "x":
  *     формулы больше не "плывут" относительно строки.
  *   - display-формулы центрируются по своему bounding box.
- *   - рисуются рамки/линии DOM-дерева (дробные черты, корни, черты *     над/под текстом) — дроби перестают быть "кривыми".
+ *   - рисуются рамки/линии DOM-дерева (дробные черты, корни, черты
+ *     над/под текстом) — дроби перестают быть "кривыми".
+ *   - добавлены левая/правая границы и подчёркивания для полного
+ *     отображения всех элементов KaTeX.
  */
 
 const TextParser = (() => {
@@ -64,8 +67,7 @@ const TextParser = (() => {
     }
 
     async function _renderFormula(latex, texSize, isDisplay, textColor) {
-        // Контейнер: эталонный текст + формула в одной строке, чтобы
- // получить общий baseline.
+        // Создаём контейнер для измерения формулы
         const wrapper = document.createElement('div');
         wrapper.style.cssText = `
             position: fixed;
@@ -73,58 +75,95 @@ const TextParser = (() => {
             opacity: 0;
             pointer-events: none;
             z-index: -1;
-            line-height: 1.2;
+            line-height: 1;
             font-size: ${texSize}px;
+            white-space: nowrap;
+            margin: 0;
+            padding: 0;
+            border: none;
         `;
 
+        // Эталонный символ для определения baseline
         const ref = document.createElement('span');
         ref.textContent = 'x';
         ref.style.cssText = `
             font-family: Georgia, 'Times New Roman', serif;
             vertical-align: baseline;
+            display: inline-block;
+            margin: 0;
+            padding: 0;
         `;
 
-        const math = document.createElement('span');
+        // Контейнер формулы
+        const mathContainer = document.createElement('span');
+        mathContainer.style.cssText = `
+            display: inline-block;
+            vertical-align: baseline;
+            line-height: 1;
+            margin: 0;
+            padding: 0;
+        `;
+        
         try {
-            katex.render(latex, math, {
+            katex.render(latex, mathContainer, {
                 displayMode: isDisplay,
                 throwOnError: false,
-                strict: false
+                strict: false,
+                trust: true
             });
         } catch (e) {
-            math.textContent = latex;
+            mathContainer.textContent = latex;
         }
 
         wrapper.appendChild(ref);
-        wrapper.appendChild(math);
+        wrapper.appendChild(document.createTextNode(' '));
+        wrapper.appendChild(mathContainer);
         document.body.appendChild(wrapper);
 
         const wrapRect = wrapper.getBoundingClientRect();
         const refRect = ref.getBoundingClientRect();
-        const mathRect = math.getBoundingClientRect();
+        const mathRect = mathContainer.getBoundingClientRect();
 
-        const w = Math.ceil(mathRect.width);
-        const h = Math.ceil(mathRect.height);
+        let w = Math.ceil(mathRect.width);
+        let h = Math.ceil(mathRect.height);
 
         if (w <= 0 || h <= 0) {
             document.body.removeChild(wrapper);
             return _fallback(latex, texSize, isDisplay);
         }
 
+        // Добавляем запас со всех сторон для дробей и высоких элементов
+        const padX = isDisplay ? 6 : 4;
+        const padY = isDisplay ? 8 : 4;
+        w += padX * 2;
+        h += padY * 2;
+
         const canvas = document.createElement('canvas');
         const scale = 2;
-        canvas.width = w * scale;
-        canvas.height = h * scale;
+        canvas.width = Math.max(1, w * scale);
+        canvas.height = Math.max(1, h * scale);
         const ctx = canvas.getContext('2d');
         ctx.scale(scale, scale);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
-        _walkAndDraw(ctx, math, mathRect.left, mathRect.top, textColor);
+        // Рисуем формулу со смещением из-за padding
+        const drawX = padX;
+        const drawY = padY;
+        _walkAndDraw(ctx, mathContainer, mathRect.left - drawX, mathRect.top - drawY, textColor);
 
         document.body.removeChild(wrapper);
 
-        const baselineOffset = isDisplay
-            ? Math.round(h * 0.5)
-            : Math.max(1, Math.round(refRect.bottom - mathRect.top));
+        // Вычисляем baselineOffset точно
+        // baselineRef - позиция базовой линии эталонного символа 'x'
+        const baselineRef = refRect.bottom;
+        // Позиция верха математического контейнера
+        const mathTop = mathRect.top;
+        // Смещение базовой линии от верха канваса
+        let baselineOffset = baselineRef - mathTop + padY;
+
+        // Ограничиваем baselineOffset разумными пределами
+        baselineOffset = Math.max(padY + 2, Math.min(h - padY - 2, baselineOffset));
 
         canvas._drawW = w;
         canvas._drawH = h;
@@ -134,7 +173,7 @@ const TextParser = (() => {
             content: latex,
             width: w,
             height: h,
-            baselineOffset,
+            baselineOffset: Math.round(baselineOffset),
             canvas: canvas
         };
     }
@@ -154,7 +193,7 @@ const TextParser = (() => {
                 if (!parentEl) continue;
 
                 const style = window.getComputedStyle(parentEl);
-                const fs = style.fontSize || `${parentEl.style.fontSize ||16}px`;
+                const fs = style.fontSize || `${parentEl.style.fontSize || 16}px`;
                 const ff = style.fontFamily || 'serif';
                 const fw = style.fontWeight || 'normal';
                 const color = _resolveColor(style.color, defaultColor);
@@ -162,6 +201,7 @@ const TextParser = (() => {
                 ctx.font = `${fw} ${fs} ${ff}`;
                 ctx.fillStyle = color;
                 ctx.textBaseline = 'alphabetic';
+                ctx.letterSpacing = style.letterSpacing || 'normal';
 
                 const range = document.createRange();
                 range.selectNodeContents(child);
@@ -223,6 +263,125 @@ const TextParser = (() => {
                 ctx.stroke();
             }
         }
+        
+        // Левая граница
+        bw = parseFloat(style.borderLeftWidth) || 0;
+        bc = _visibleColor(style.borderLeftColor, fallbackColor);
+        if (bw > 0 && bc) {
+            ctx.strokeStyle = bc;
+            ctx.lineWidth = Math.max(0.5, bw);
+            for (const r of rects) {
+                ctx.beginPath();
+                ctx.moveTo(r.left - pL + bw / 2, r.top - pT);
+                ctx.lineTo(r.left - pL + bw / 2, r.bottom - pT);
+                ctx.stroke();
+            }
+        }
+        
+        // Правая граница
+        bw = parseFloat(style.borderRightWidth) || 0;
+        bc = _visibleColor(style.borderRightColor, fallbackColor);
+        if (bw > 0 && bc) {
+            ctx.strokeStyle = bc;
+            ctx.lineWidth = Math.max(0.5, bw);
+            for (const r of rects) {
+                ctx.beginPath();
+                ctx.moveTo(r.right - pL - bw / 2, r.top - pT);
+                ctx.lineTo(r.right - pL - bw / 2, r.bottom - pT);
+                ctx.stroke();
+            }
+        }
+        
+        // Подчёркивания (text-decoration)
+        const td = style.textDecoration;
+        if (td && td !== 'none') {
+            const tdc = _visibleColor(style.textDecorationColor, fallbackColor) || fallbackColor;
+            const tds = style.textDecorationStyle || 'solid';
+            const tdt = parseFloat(style.textDecorationThickness) || 1;
+            
+            ctx.strokeStyle = tdc;
+            ctx.lineWidth = Math.max(0.5, tdt);
+            if (tds === 'dashed') ctx.setLineDash([4, 3]);
+            else if (tds === 'dotted') ctx.setLineDash([1, 2]);
+            else ctx.setLineDash([]);
+            
+            for (const r of rects) {
+                if (td.includes('underline')) {
+                    ctx.beginPath();
+                    ctx.moveTo(r.left - pL, r.bottom - pT - 2);
+                    ctx.lineTo(r.right - pL, r.bottom - pT - 2);
+                    ctx.stroke();
+                }
+                if (td.includes('overline')) {
+                    ctx.beginPath();
+                    ctx.moveTo(r.left - pL, r.top - pT + 2);
+                    ctx.lineTo(r.right - pL, r.top - pT + 2);
+                    ctx.stroke();
+                }
+            }
+            ctx.setLineDash([]);
+        }
+        
+        // Дробные черты и другие горизонтальные линии (border-top у внутренних элементов)
+        // Проверяем все границы для каждого rect
+        for (const r of rects) {
+            // Горизонтальные линии внутри элемента (например, дробные черты)
+            const children = el.querySelectorAll('*');
+            for (const child of children) {
+                const cstyle = window.getComputedStyle(child);
+                const cRects = child.getClientRects();
+                
+                for (const cr of cRects) {
+                    // Верхняя граница (дробная черта)
+                    const topBw = parseFloat(cstyle.borderTopWidth) || 0;
+                    const topBc = _visibleColor(cstyle.borderTopColor, fallbackColor);
+                    if (topBw > 0 && topBc) {
+                        ctx.strokeStyle = topBc;
+                        ctx.lineWidth = Math.max(0.5, topBw);
+                        ctx.beginPath();
+                        ctx.moveTo(cr.left - pL, cr.top - pT + topBw / 2);
+                        ctx.lineTo(cr.right - pL, cr.top - pT + topBw / 2);
+                        ctx.stroke();
+                    }
+                    
+                    // Нижняя граница
+                    const botBw = parseFloat(cstyle.borderBottomWidth) || 0;
+                    const botBc = _visibleColor(cstyle.borderBottomColor, fallbackColor);
+                    if (botBw > 0 && botBc) {
+                        ctx.strokeStyle = botBc;
+                        ctx.lineWidth = Math.max(0.5, botBw);
+                        ctx.beginPath();
+                        ctx.moveTo(cr.left - pL, cr.bottom - pT - botBw / 2);
+                        ctx.lineTo(cr.right - pL, cr.bottom - pT - botBw / 2);
+                        ctx.stroke();
+                    }
+                    
+                    // Левая граница
+                    const leftBw = parseFloat(cstyle.borderLeftWidth) || 0;
+                    const leftBc = _visibleColor(cstyle.borderLeftColor, fallbackColor);
+                    if (leftBw > 0 && leftBc) {
+                        ctx.strokeStyle = leftBc;
+                        ctx.lineWidth = Math.max(0.5, leftBw);
+                        ctx.beginPath();
+                        ctx.moveTo(cr.left - pL + leftBw / 2, cr.top - pT);
+                        ctx.lineTo(cr.left - pL + leftBw / 2, cr.bottom - pT);
+                        ctx.stroke();
+                    }
+                    
+                    // Правая граница
+                    const rightBw = parseFloat(cstyle.borderRightWidth) || 0;
+                    const rightBc = _visibleColor(cstyle.borderRightColor, fallbackColor);
+                    if (rightBw > 0 && rightBc) {
+                        ctx.strokeStyle = rightBc;
+                        ctx.lineWidth = Math.max(0.5, rightBw);
+                        ctx.beginPath();
+                        ctx.moveTo(cr.right - pL - rightBw / 2, cr.top - pT);
+                        ctx.lineTo(cr.right - pL - rightBw / 2, cr.bottom - pT);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
     }
 
     function _visibleColor(cssColor, fallback) {
@@ -273,11 +432,12 @@ const TextParser = (() => {
         canvas._drawW = w;
         canvas._drawH = h;
 
-        const baselineOffset = isDisplay            ? Math.round(h * 0.5)
+        const baselineOffset = isDisplay
+            ? Math.round(h * 0.6)
             : Math.round(h * 0.72);
 
         return {
-            type: 'LATEX_INLINE',
+            type: isDisplay ? 'LATEX_DISPLAY' : 'LATEX_INLINE',
             content: latex,
             width: w,
             height: h,
