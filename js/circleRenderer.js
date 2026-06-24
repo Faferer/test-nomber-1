@@ -21,7 +21,8 @@ const CircleRenderer = (() => {
             fontSize = 16, lineHeight = 1.2, padding = 15,
             textColor = '#ffffff', bgColor = '#1a1a2e',
             borderColor = '#e94560', borderWidth = 3,
-            excludePath = null, excludeColor = '#16213e'
+            excludePath = null, excludeColor = '#16213e',
+            formulaPadding = 5
         } = opts;
 
         const SIZE = Math.max(64, Math.round(size));
@@ -37,7 +38,7 @@ const CircleRenderer = (() => {
             fontFamily: "Georgia, 'Times New Roman', serif",
             fontWeight: 'normal',
             textColor: textColor,
-            formulaPadding: opts.formulaPadding || 2
+            formulaPadding: formulaPadding
         });
         const tokens = TextParser.prepareForLayout(measured);
         if (tokens.length === 0) return [];
@@ -62,8 +63,12 @@ const CircleRenderer = (() => {
         const fontAscent = refM.actualBoundingBoxAscent || Math.round(fontSize * 0.78);
         const fontDescent = refM.actualBoundingBoxDescent || Math.round(fontSize * 0.22);
 
-        const blStart = Math.ceil(CY - effR + fontAscent);
-        const blEnd = Math.floor(CY + effR - fontDescent);
+        // Добавляем формульный отступ к межстрочному интервалу
+        // formulaPadding добавляется сверху и снизу, поэтому умножаем на 2
+        const formulaExtraSpace = formulaPadding * 2;
+        
+        const blStart = Math.ceil(CY - effR + fontAscent + formulaExtraSpace);
+        const blEnd = Math.floor(CY + effR - fontDescent - formulaExtraSpace);
 
         const pages = [];
         let ti = 0;
@@ -109,8 +114,8 @@ const CircleRenderer = (() => {
                         const tBot = bl + (tok.height - tok.baselineOffset);
 
                         // Проверяем, что токен помещается по вертикали внутри круга
-                        // С минимальным запасом для предотвращения обрезания
-                        const verticalMargin = 0;
+                        // С учётом formulaPadding для предотвращения обрезания
+                        const verticalMargin = formulaPadding;
                         if (tTop < CY - effR + verticalMargin || tBot > CY + effR - verticalMargin) {
                             // Вертикально не влезает на эту базовую линию
                             forceBreak = 'vfit';
