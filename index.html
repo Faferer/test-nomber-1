@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Текст в круг — генератор скриншотов</title>
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+
+    <!-- JSZip -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+    <!-- FileSaver -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+    <!-- html2canvas -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- ===== ЛЕВАЯ ПАНЕЛЬ ===== -->
+        <aside id="sidebar">
+            <h1>🔤 Текст в круг</h1>
+
+            <!-- Ввод текста -->
+            <section class="panel">
+                <h2>Текст</h2>
+                <textarea id="textInput" placeholder="Введите текст здесь...&#10;&#10;Формулы LaTeX: $E=mc^2$&#10;Дисплейные: $$\int_0^1 x\,dx$$&#10;Или Unicode: x² + √π ≈ 3"></textarea>
+            </section>
+
+            <!-- Настройки -->
+            <section class="panel">
+                <h2>Настройки</h2>
+                <div class="setting-row">
+                    <label for="circleSize">Диаметр круга:</label>
+                    <input type="range" id="circleSize" min="300" max="800" value="470" step="10">
+                    <span id="circleSizeVal">470px</span>
+                </div>
+                <div class="setting-row">
+                    <label for="fontSize">Размер шрифта:</label>
+                    <input type="range" id="fontSize" min="10" max="32" value="16">
+                    <span id="fontSizeVal">16px</span>
+                </div>
+                <div class="setting-row">
+                    <label for="lineHeight">Высота строки:</label>
+                    <input type="range" id="lineHeight" min="1.2" max="3" value="1.6" step="0.1">
+                    <span id="lineHeightVal">1.6</span>
+                </div>
+                <div class="setting-row">
+                    <label for="padding">Отступ от края:</label>
+                    <input type="range" id="padding" min="0" max="50" value="15">
+                    <span id="paddingVal">15px</span>
+                </div>
+                <div class="setting-row">
+                    <label for="textColor">Цвет текста:</label>
+                    <input type="color" id="textColor" value="#ffffff">
+                </div>
+                <div class="setting-row">
+                    <label for="bgColor">Фон круга:</label>
+                    <input type="color" id="bgColor" value="#1a1a2e">
+                </div>
+                <div class="setting-row">
+                    <label for="borderColor">Рамка круга:</label>
+                    <input type="color" id="borderColor" value="#e94560">
+                </div>
+                <div class="setting-row">
+                    <label for="borderWidth">Толщина рамки:</label>
+                    <input type="range" id="borderWidth" min="0" max="10" value="3">
+                    <span id="borderWidthVal">3px</span>
+                </div>
+                <div class="setting-row">
+                    <label for="excludeColor">Заливка выреза:</label>
+                    <input type="color" id="excludeColor" value="#16213e">
+                </div>
+            </section>
+
+            <!-- Область вырезания -->
+            <section class="panel">
+                <h2>Область вырезания</h2>
+                <p class="hint">Задайте SVG-путь или нарисуйте на холсте. Текст не будет заходить в эту область.</p>
+                <div class="tab-bar">
+                    <button class="tab-btn active" data-tab="path-text">Текст SVG</button>
+                    <button class="tab-btn" data-tab="path-draw">Рисование</button>
+                    <button class="tab-btn" data-tab="path-clear">Очистить</button>
+                </div>
+                <div id="path-text" class="tab-content active">
+                    <textarea id="svgPathInput" placeholder="M 200 150 L 300 150 L 300 300 L 200 300 Z" rows="3"></textarea>
+                    <button id="applyPathBtn" class="btn small">Применить</button>
+                </div>
+                <div id="path-draw" class="tab-content">
+                    <div class="draw-instructions">
+                        <span>🖱️ ЛКМ — добавить точку</span>
+                        <span>🖱️ ПКМ — закрыть фигуру</span>
+                        <span>🗑️ Ctrl+Z — отмена</span>
+                    </div>
+                    <canvas id="pathDrawCanvas" width="470" height="470"></canvas>
+                </div>
+            </section>
+
+            <!-- Кнопки генерации -->
+            <section class="panel actions">
+                <button id="generateBtn" class="btn primary">▶ Сгенерировать</button>
+            </section>
+        </aside>
+
+        <!-- ===== ПРАВАЯ ПАНЕЛЬ ===== -->
+        <main id="main">
+            <div id="toolbar">
+                <button id="downloadAllZip" class="btn" disabled>📦 Скачать все (ZIP)</button>
+                <span id="pageCount" class="info"></span>
+            </div>
+            <div id="preview">
+                <div id="placeholder">
+                    <p>Введите текст и нажмите «Сгенерировать»</p>
+                    <p class="sub">Текст с формулами будет распределён по кругам 470×470px</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Скрытые элементы для рендеринга формул -->
+    <div id="hiddenRender" style="position:absolute;left:-9999px;top:-9999px;visibility:hidden;"></div>
+
+    <script src="js/textParser.js"></script>
+    <script src="js/circleRenderer.js"></script>
+    <script src="js/pathEditor.js"></script>
+    <script src="js/exportManager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
