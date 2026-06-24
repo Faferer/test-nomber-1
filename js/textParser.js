@@ -135,8 +135,8 @@ const TextParser = (() => {
         // Минимальные запасы для дробей, интегралов и других высоких элементов
         // padY должен быть достаточным чтобы формулы не обрезались, но не слишком большим
         // formulaPadding позволяет пользователю регулировать отступы через интерфейс
-        const padX = isDisplay ? 2 + formulaPadding : 1 + Math.floor(formulaPadding / 2);
-        const padY = isDisplay ? 4 + formulaPadding : 2 + Math.floor(formulaPadding / 2);
+        const padX = isDisplay ? 2 + formulaPadding * 2 : 1 + formulaPadding;
+        const padY = isDisplay ? 4 + formulaPadding * 3 : 2 + formulaPadding * 2;
         w += padX * 2;
         h += padY * 2;
 
