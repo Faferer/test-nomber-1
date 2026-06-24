@@ -104,19 +104,24 @@ const CircleRenderer = (() => {
                             break;
                         }
 
+                        // Вычисляем верх и низ токена относительно baseline
                         const tTop = bl - tok.baselineOffset;
                         const tBot = bl + (tok.height - tok.baselineOffset);
 
-                        if (tTop < CY - effR - 0.5 || tBot > CY + effR + 0.5) {
-                            // вертикально не влезает на эту базовую линию
+                        // Проверяем, что токен помещается по вертикали внутри круга
+                        // С небольшим запасом для предотвращения обрезания
+                        const verticalMargin = 2;
+                        if (tTop < CY - effR + verticalMargin || tBot > CY + effR - verticalMargin) {
+                            // Вертикально не влезает на эту базовую линию
                             forceBreak = 'vfit';
                             break;
                         }
 
                         const sp = tok._spaceAfter ? spaceW : 0;
                         const isFirstOnLine = page.lines.length === 0 ||
- page.lines[page.lines.length - 1].baseline !== bl;
+                            page.lines[page.lines.length - 1].baseline !== bl;
 
+                        // Проверяем, что токен помещается по горизонтали в сегмент
                         if (cx + tok.width + sp <= seg.right + 0.5 || isFirstOnLine) {
                             page.lines.push({ baseline: bl, x: cx, token: tok });
                             cx += tok.width + sp;
@@ -124,6 +129,7 @@ const CircleRenderer = (() => {
                             placedAnything = true;
                             linePlaced = true;
 
+                            // Обновляем ascent/descent строки с учётом высоты токена
                             lineAscent = Math.max(lineAscent, tok.baselineOffset);
                             lineDescent = Math.max(lineDescent, tok.height - tok.baselineOffset);
                         } else {
@@ -212,11 +218,15 @@ const CircleRenderer = (() => {
         ctx.font = font;
         ctx.textBaseline = 'alphabetic';
 
-        for (const item of page.lines) {
+        // Сортируем линии по baseline для правильного порядка отрисовки
+        const sortedLines = [...page.lines].sort((a, b) => a.baseline - b.baseline);
+
+        for (const item of sortedLines) {
             const tok = item.token;
             if (tok.canvas) {
                 const drawW = tok.canvas._drawW || tok.width;
                 const drawH = tok.canvas._drawH || tok.height;
+                // Точная позиция Y: baseline минус offset базовой линии токена
                 const drawY = item.baseline - tok.baselineOffset;
                 ctx.drawImage(tok.canvas, item.x, drawY, drawW, drawH);
             } else {
